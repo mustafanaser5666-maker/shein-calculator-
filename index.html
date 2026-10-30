@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12263A">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>حاسبة الراقي – شين</title>
+<style>
+:root{--ink:#12263A;--paper:#EEF3F6;--card:#fff;--gold:#E8A317;--green:#1F7A5C;--red:#B8402F;--mute:#6A7C8C;--line:#D5DEE5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,Arial,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--ink);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;display:flex;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:19px}
+header small{color:var(--gold);font-size:12px;display:block;margin-top:2px}
+main{max-width:560px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{font-size:13px;color:var(--mute);display:block;margin-bottom:4px}
+input{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:#fff;color:var(--ink);font-family:inherit}
+input:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+button{border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}
+.gold{background:var(--gold);color:var(--ink)}
+.dark{background:var(--ink);color:#fff}
+.ghost{background:#E3EAEF;color:var(--ink)}
+.msg{font-size:13px;margin-top:8px;min-height:18px}
+.msg.err{color:var(--red)}.msg.ok{color:var(--green)}
+.item{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .nm{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .ctl{display:flex;align-items:center;gap:6px;grid-column:1/-1}
+.item .ctl input{width:92px;padding:7px}
+.q{display:flex;align-items:center;gap:4px}
+.q button{width:32px;height:32px;padding:0;background:#E3EAEF}
+.q span{min-width:22px;text-align:center;font-weight:700}
+.del{background:none;color:var(--red);padding:4px 8px;margin-inline-start:auto}
+.sum{display:flex;justify-content:space-between;padding:6px 0;font-size:15px}
+.total{background:var(--ink);color:#fff;border-radius:12px;padding:14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+.total b{font-size:26px;color:var(--gold)}
+details summary{cursor:pointer;font-weight:700}
+.empty{color:var(--mute);text-align:center;padding:14px;font-size:14px}
+.chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px}
+.chk input{width:auto}
+</style>
+</head>
+<body>
+<header><div><h1>حاسبة الراقي</h1><small>سلة شين ← دينار عراقي</small></div><button class="ghost" id="reset">سلة جديدة</button></header>
+<main>
+ <section class="card">
+  <label for="url">رابط سلة شين</label>
+  <input id="url" type="url" inputmode="url" placeholder="الصق رابط السلة أو المنتج هنا" dir="ltr">
+  <div class="row" style="margin-top:8px"><button class="gold" id="fetch">احسب من الرابط</button><button class="ghost" id="paste">لصق</button></div>
+  <div class="msg" id="fmsg"></div>
+ </section>
+
+ <section class="card">
+  <div id="list"></div>
+  <details style="margin-top:6px"><summary>إضافة مادة يدوياً</summary>
+   <div class="row" style="margin-top:8px"><input id="mn" placeholder="الاسم (اختياري)"><input id="mp" type="number" inputmode="decimal" step="0.01" placeholder="السعر $"></div>
+   <button class="dark" id="madd" style="width:100%;margin-top:8px">إضافة</button>
+  </details>
+ </section>
+
+ <section class="card">
+  <div class="sum"><span>مجموع المواد</span><b id="usd">$0.00</b></div>
+  <div class="sum"><span>بسعر الصرف</span><b id="iqd0">0</b></div>
+  <div class="sum"><span>العمولة</span><b id="com">0</b></div>
+  <div class="sum"><span>التوصيل</span><b id="del">0</b></div>
+  <div class="total"><span>المطلوب من الزبون</span><b id="grand">0</b></div>
+  <button class="dark" id="copy" style="width:100%;margin-top:10px">نسخ الفاتورة للزبون</button>
+  <div class="msg" id="cmsg"></div>
+ </section>
+
+ <details class="card"><summary>الإعدادات</summary>
+  <div class="row" style="margin-top:10px"><div><label>سعر الصرف (د.ع لكل $)</label><input id="rate" type="number" inputmode="decimal"></div><div><label>رسوم التوصيل (د.ع)</label><input id="fee" type="number" inputmode="decimal"></div></div>
+  <div class="row" style="margin-top:8px"><div><label>عمولة % (اختياري)</label><input id="pct" type="number" inputmode="decimal"></div><div><label>التقريب لأقرب</label><input id="rnd" type="number" inputmode="numeric"></div></div>
+ </details>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const S={rate:1500,fee:5000,pct:0,rnd:250};
+try{Object.assign(S,JSON.parse(localStorage.getItem('alraqi_s')||'{}'))}catch(e){}
+let items=[];try{items=JSON.parse(localStorage.getItem('alraqi_i')||'[]')}catch(e){}
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+function save(){try{localStorage.setItem('alraqi_s',JSON.stringify(S));localStorage.setItem('alraqi_i',JSON.stringify(items))}catch(e){}}
+function calc(){
+ const usd=items.reduce((a,i)=>a+i.price*i.qty,0);
+ const base=usd*S.rate, com=base*S.pct/100, fee=items.length?S.fee:0;
+ let g=base+com+fee; if(S.rnd>0) g=Math.ceil(g/S.rnd)*S.rnd;
+ return{usd,base,com,fee,g};
+}
+function render(){
+ const L=$('list');
+ L.innerHTML=items.length?'':'<div class="empty">ما أكو مواد. الصق الرابط أو أضف يدوياً.</div>';
+ items.forEach((it,k)=>{
+  const d=document.createElement('div');d.className='item';
+  d.innerHTML=`<div class="nm"></div><b dir="ltr">$${(it.price*it.qty).toFixed(2)}</b>
+  <div class="ctl"><input type="number" inputmode="decimal" step="0.01" value="${it.price}" aria-label="السعر"><div class="q"><button data-a="m">−</button><span>${it.qty}</span><button data-a="p">+</button></div><button class="del" data-a="d">حذف</button></div>`;
+  d.querySelector('.nm').textContent=it.name||('مادة '+(k+1));
+  d.querySelector('input').onchange=e=>{it.price=Math.max(0,parseFloat(e.target.value)||0);save();render()};
+  d.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
+   const a=b.dataset.a; if(a==='p')it.qty++; if(a==='m')it.qty=Math.max(1,it.qty-1); if(a==='d')items.splice(k,1); save();render()});
+  L.appendChild(d);
+ });
+ const c=calc();
+ $('usd').textContent='$'+c.usd.toFixed(2);$('iqd0').textContent=fmt(c.base);$('com').textContent=fmt(c.com);$('del').textContent=fmt(c.fee);$('grand').textContent=fmt(c.g)+' د.ع';
+}
+['rate','fee','pct','rnd'].forEach(k=>{$(k).value=S[k];$(k).oninput=e=>{S[k]=parseFloat(e.target.value)||0;save();render()}});
+$('madd').onclick=()=>{const p=parseFloat($('mp').value);if(!p)return;items.push({name:$('mn').value.trim(),price:p,qty:1});$('mn').value='';$('mp').value='';save();render()};
+$('reset').onclick=()=>{if(!items.length||confirm('مسح السلة الحالية؟')){items=[];$('url').value='';$('fmsg').textContent='';save();render()}};
+$('paste').onclick=async()=>{try{$('url').value=await navigator.clipboard.readText()}catch(e){$('fmsg').className='msg err';$('fmsg').textContent='الصق يدوياً بالخانة'}};
+$('fetch').onclick=async()=>{
+ const u=$('url').value.trim(),m=$('fmsg');
+ if(!/^https?:\/\//i.test(u)){m.className='msg err';m.textContent='الرابط غير صحيح';return}
+ m.className='msg';m.textContent='جاري سحب السلة...';
+ try{
+  const r=await fetch('/api/cart?url='+encodeURIComponent(u));
+  const j=await r.json();
+  if(!j.ok||!j.items.length)throw new Error(j.error||'ما لكيت مواد بالرابط');
+  items=j.items.map(i=>({name:i.name||'',price:+i.price||0,qty:+i.qty||1}));
+  save();render();m.className='msg ok';m.textContent='انسحبت '+items.length+' مادة. راجع الأسعار قبل الإرسال.';
+ }catch(e){m.className='msg err';m.textContent=(e.message||'فشل السحب')+' — أضف المواد يدوياً.'}
+};
+$('copy').onclick=async()=>{
+ const c=calc();
+ const t=`فاتورة متجر الراقي\n`+items.map((i,k)=>`${k+1}) ${i.name||'مادة'} × ${i.qty} = $${(i.price*i.qty).toFixed(2)}`).join('\n')+`\n\nالمجموع: $${c.usd.toFixed(2)}\nسعر الصرف: ${fmt(S.rate)}\nالتوصيل: ${fmt(c.fee)} د.ع\nالمطلوب: ${fmt(c.g)} د.ع`;
+ try{await navigator.clipboard.writeText(t);$('cmsg').className='msg ok';$('cmsg').textContent='اننسخت الفاتورة'}catch(e){$('cmsg').className='msg err';$('cmsg').textContent='تعذر النسخ'}
+};
+render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
